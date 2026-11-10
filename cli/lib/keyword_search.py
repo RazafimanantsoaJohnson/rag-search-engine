@@ -2,59 +2,49 @@ import string
 from nltk import PorterStemmer
 from .search_utils import *
 
-stemmer = PorterStemmer()
+def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
+    movies = load_movies()
+    results = []
+    for movie in movies:
+        query_tokens = tokenize_text(query)
+        title_tokens = tokenize_text(movie["title"])
+        if has_matching_token(query_tokens, title_tokens):
+            results.append(movie)
+            if len(results) >= limit:
+                break
+    return results
 
-def keyword_search(movies: list, search_query: str) -> str:
-    result = ""
-    i = 0
-    result_count = 0
-    stop_words = process_stop_words()
-    while(i < len(movies) and result_count <5):
-        movie = movies[i]
-        if check_query(search_query.lower(), movie["title"], stop_words):
-            result_count +=1
-            if result =="":
-                result = f"{i}. {movie["title"]}"
-            else:
-                result = f"{result}\n{i}. {movie["title"]}"
-        i += 1
-    return result
-
-def check_query(search_query: str, movie_title: str, stop_words: list[str]) -> bool:
-    query = remove_useless_substring(search_query, string.punctuation)
-    title = remove_useless_substring(movie_title, string.punctuation)
-    query_tokens = tokenize_text(query, stop_words)
-    title_tokens = tokenize_text(title, stop_words)
-
-    title_str = "".join(title_tokens)
-    for t in query_tokens:
-        if (t in title_tokens) or (t in title_str):
-            return True
+def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
+    for query_token in query_tokens:
+        for title_token in title_tokens:
+            if query_token in title_token:
+                return True
     return False
 
-def remove_useless_substring(text: str, substring: str) -> str:
-    table = str.maketrans("","", substring)
-    result = text.lower()
-    return str.translate(result, table)
+def preprocess_text(text: str) -> str:
+    text = text.lower()
+    text = text.translate(str.maketrans("", "", string.punctuation))
+    return text
 
-def tokenize_text(search_query: str, stop_words: list[str]) -> list[str]:
-    tokens = search_query.split()
-    i = 0
-    while (i < len(tokens)):
-        t = tokens[i]
-        if (t in stop_words):
-            tokens.remove(t)
-        else:
-            tokens[i] = stemmer.stem(t)
-        i+= 1
-            
-    return tokens
+def load_stopwords() -> list[str]:
+    with open(STOPWORDS_PATH, "r") as f:
+        return [preprocess_text(word) for word in f.read().splitlines()]
 
-def process_stop_words() -> list[str]:
-    def remove_punctuation(word: str) -> str:
-        return remove_useless_substring(word, string.punctuation)
-    stop_words = load_stop_words()
-    stop_words = map(remove_punctuation, stop_words)
-    return list(stop_words)
-    
+STOPWORDS = load_stopwords()
 
+def tokenize_text(text: str) -> list[str]:
+    text = preprocess_text(text)
+    tokens = text.split()
+    valid_tokens = []
+    for token in tokens:
+        if token:
+            valid_tokens.append(token)
+    filtered_words = []
+    for word in valid_tokens:
+        if word not in STOPWORDS:
+            filtered_words.append(word)
+    stemmer = PorterStemmer()
+    stemmed_words = []
+    for word in filtered_words:
+        stemmed_words.append(stemmer.stem(word))
+    return stemmed_words

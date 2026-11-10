@@ -15,12 +15,14 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
-            movies_data = load_movies_data()
-            print(keyword_search(movies_data["movies"], args.query))
+            results = search_command(args.query)
+            for i, res in enumerate(results, 1):
+                print(f"{i}. {res['title']}")
+            # movies_data = load_movies_data()
+            # print(keyword_search(movies_data["movies"], args.query))
             pass
         case _:
-            print(load_movies_data())
-            # parser.print_help()
+            parser.print_help()
 
 
 if __name__ == "__main__":
