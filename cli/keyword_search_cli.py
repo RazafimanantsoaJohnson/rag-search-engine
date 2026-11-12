@@ -8,6 +8,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest= "command", help= "Available commands")
 
     search_parser = subparsers.add_parser("search", help="Search movies using keywords")
+    search_parser = subparsers.add_parser("build", help="Search movies using keywords")
     search_parser.add_argument("query", type=str, help="Search query")
 
     args = parser.parse_args()
@@ -20,6 +21,9 @@ def main() -> None:
                 print(f"{i}. {res['title']}")
             # movies_data = load_movies_data()
             # print(keyword_search(movies_data["movies"], args.query))
+            pass
+        case "build":
+            build_command()
             pass
         case _:
             parser.print_help()
