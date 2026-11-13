@@ -16,9 +16,11 @@ class InvertedIndex:
             self.index[t].add(doc_id)
 
     def get_documents(self, term: str) -> list[int]:
-        if not(self.index[term]):
+        if term not in self.index:
             return []
         return sorted(list(self.index[term]))
+    def get_document_movie(self, doc_id: int) -> Movie:
+        return self.docmap[doc_id]
     def build(self):
         movies = load_movies()
         for movie in movies:
@@ -30,22 +32,35 @@ class InvertedIndex:
         pickle.dump(self.index, index_file)
         pickle.dump(self.docmap, docmap_file)
 
+    def load(self):
+        try:
+            index_file = open(INDEX_CACHE_PATH, "rb")
+            docmap_file = open(INDEX_DOCMAP_CACHE_PATH, "rb")
+            self.index = pickle.load(index_file)
+            self.docmap = pickle.load(docmap_file)
+        except(Exception):
+            raise Exception("Trying to access inexistant file")
+        
 def build_command() -> InvertedIndex:
     index = InvertedIndex()
     index.build()
     index.save()
-    searched_docs = index.get_documents("merida")
-    print(f"First document for token 'merida' = {searched_docs[0]}")
     return index
 
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
     movies = load_movies()
     results = []
-    for movie in movies:
-        query_tokens = tokenize_text(query)
-        title_tokens = tokenize_text(movie["title"])
-        if has_matching_token(query_tokens, title_tokens):
+    index = InvertedIndex()
+    try:
+        index.load()
+    except(Exception):
+        raise Exception("Unable to load index")
+    query_tokens = tokenize_text(query)
+    for query_token in query_tokens:
+        doc_indexes = index.get_documents(query_token)
+        for i in doc_indexes:
+            movie = index.get_document_movie(i)
             results.append(movie)
             if len(results) >= limit:
                 break

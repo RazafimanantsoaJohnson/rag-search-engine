@@ -8,8 +8,8 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest= "command", help= "Available commands")
 
     search_parser = subparsers.add_parser("search", help="Search movies using keywords")
-    search_parser = subparsers.add_parser("build", help="Search movies using keywords")
     search_parser.add_argument("query", type=str, help="Search query")
+    subparsers.add_parser("build", help="Search movies using keywords")
 
     args = parser.parse_args()
 
