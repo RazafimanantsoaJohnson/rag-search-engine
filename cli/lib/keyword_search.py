@@ -1,5 +1,7 @@
 import string
 import pickle
+import math
+from collections import Counter
 from nltk import PorterStemmer
 from .search_utils import *
 
@@ -7,13 +9,17 @@ from .search_utils import *
 class InvertedIndex:
     index: dict[str, set] = {}
     docmap: dict[int, Movie] = {}
+    term_frequency: dict[int, Counter] = {}
 
     def __add_document(self, doc_id: int, text: str):
         tokens = tokenize_text(text)
         for t in tokens:
             if t not in self.index:
                 self.index[t] = set()
+            if doc_id not in self.term_frequency:
+                self.term_frequency[doc_id] = Counter()
             self.index[t].add(doc_id)
+            self.term_frequency[doc_id][t] +=1
 
     def get_documents(self, term: str) -> list[int]:
         if term not in self.index:
@@ -21,6 +27,11 @@ class InvertedIndex:
         return sorted(list(self.index[term]))
     def get_document_movie(self, doc_id: int) -> Movie:
         return self.docmap[doc_id]
+    def get_tf(self, doc_id: int, term: str) -> int:
+        if doc_id not in self.term_frequency:
+            return 0
+        return self.term_frequency[doc_id][term]
+    
     def build(self):
         movies = load_movies()
         for movie in movies:
@@ -29,15 +40,19 @@ class InvertedIndex:
     def save(self):
         index_file = open(INDEX_CACHE_PATH, "wb")
         docmap_file = open(INDEX_DOCMAP_CACHE_PATH, "wb")
+        term_frequency_file = open(INDEX_TERMFREQUENCY_CACHE_PATH, "wb")
         pickle.dump(self.index, index_file)
         pickle.dump(self.docmap, docmap_file)
+        pickle.dump(self.term_frequency, term_frequency_file)
 
     def load(self):
         try:
             index_file = open(INDEX_CACHE_PATH, "rb")
             docmap_file = open(INDEX_DOCMAP_CACHE_PATH, "rb")
+            term_frequency_file = open(INDEX_TERMFREQUENCY_CACHE_PATH, "rb")
             self.index = pickle.load(index_file)
             self.docmap = pickle.load(docmap_file)
+            self.term_frequency = pickle.load(term_frequency_file)
         except(Exception):
             raise Exception("Trying to access inexistant file")
         
@@ -47,9 +62,16 @@ def build_command() -> InvertedIndex:
     index.save()
     return index
 
+def idf_command(term: str):
+    term = tokenize_single_term(term)
+    index = InvertedIndex()
+    index.load()
+    total_doc_count = len(index.docmap)
+    matching_doc_count = len(index.get_documents(term))
+    result= math.log((total_doc_count +1)/(matching_doc_count+1))
+    print(f"Inverse document frequency of '{term}': {result:.2f}")
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
-    movies = load_movies()
     results = []
     index = InvertedIndex()
     try:
@@ -100,3 +122,11 @@ def tokenize_text(text: str) -> list[str]:
     for word in filtered_words:
         stemmed_words.append(stemmer.stem(word))
     return stemmed_words
+
+
+def tokenize_single_term(term: str) -> str:
+    tokens = tokenize_text(term)
+    if len(tokens) != 1:
+        raise Exception("invaild number of tokens in terms, expecting 1")
+    else:
+        return tokens[0]

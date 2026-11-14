@@ -10,6 +10,11 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using keywords")
     search_parser.add_argument("query", type=str, help="Search query")
     subparsers.add_parser("build", help="Search movies using keywords")
+    tf_parser = subparsers.add_parser("tf", help="Get the term frequency of a term in a document")
+    tf_parser.add_argument("doc_id", type=int, help="id of a document")
+    tf_parser.add_argument("term", type=str, help="the term to get the frequency for")
+    idf_parser = subparsers.add_parser("idf", help="Get the inverted document frequency score of a term")
+    idf_parser.add_argument("term", type=str, help="")
 
     args = parser.parse_args()
 
@@ -24,6 +29,16 @@ def main() -> None:
             pass
         case "build":
             build_command()
+            pass
+        case "tf":
+            term = tokenize_single_term(args.term)
+            index = InvertedIndex()
+            index.load()
+            result= index.get_tf(args.doc_id, term)
+            print(result)
+            pass
+        case "idf":
+            idf_command(args.term)
             pass
         case _:
             parser.print_help()

@@ -50,6 +50,7 @@ CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
 
 INDEX_CACHE_PATH = os.path.join(CACHE_DIR, "index.pkl")
 INDEX_DOCMAP_CACHE_PATH = os.path.join(CACHE_DIR, "docmap.pkl")
+INDEX_TERMFREQUENCY_CACHE_PATH = os.path.join(CACHE_DIR, "term_frequencies.pkl")
 
 def load_movies() -> list[Movie]:
     with open(DATA_PATH, "r") as f:
