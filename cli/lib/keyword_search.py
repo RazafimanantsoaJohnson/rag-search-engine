@@ -69,7 +69,22 @@ def idf_command(term: str):
     total_doc_count = len(index.docmap)
     matching_doc_count = len(index.get_documents(term))
     result= math.log((total_doc_count +1)/(matching_doc_count+1))
-    print(f"Inverse document frequency of '{term}': {result:.2f}")
+    return result
+
+def tf_command(doc_id: int, term: str):
+    term = tokenize_single_term(term)
+    index = InvertedIndex()
+    index.load()
+    result= index.get_tf(doc_id, term)
+    print(result)
+
+def tfidf_command(doc_id: int, term:str):
+    index = InvertedIndex()
+    index.load()
+    idf_score = idf_command(term)
+    tfidf = index.get_tf(doc_id, term) * idf_score
+    return tfidf
+    
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
     results = []
