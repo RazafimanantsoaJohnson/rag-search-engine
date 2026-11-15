@@ -31,7 +31,10 @@ class InvertedIndex:
         if doc_id not in self.term_frequency:
             return 0
         return self.term_frequency[doc_id][term]
-    
+    def get_bm25_idf(self, term:str) -> float:
+        total_doc_count = len(self.docmap)
+        matching_doc_count = len(self.get_documents(term))
+        return math.log((total_doc_count -matching_doc_count +0.5)/(matching_doc_count + 0.5) +1)
     def build(self):
         movies = load_movies()
         for movie in movies:
@@ -84,7 +87,12 @@ def tfidf_command(doc_id: int, term:str):
     idf_score = idf_command(term)
     tfidf = index.get_tf(doc_id, term) * idf_score
     return tfidf
-    
+
+def bm25_idf_command(term: str):
+    index = InvertedIndex()
+    index.load()
+    term= tokenize_single_term(term)
+    return index.get_bm25_idf(term)
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
     results = []
@@ -145,3 +153,4 @@ def tokenize_single_term(term: str) -> str:
         raise Exception("invaild number of tokens in terms, expecting 1")
     else:
         return tokens[0]
+
