@@ -10,6 +10,7 @@ class InvertedIndex:
     index: dict[str, set] = {}
     docmap: dict[int, Movie] = {}
     term_frequency: dict[int, Counter] = {}
+    doc_lengths: dict[int, int] = {}
 
     def __add_document(self, doc_id: int, text: str):
         tokens = tokenize_text(text)
@@ -20,6 +21,12 @@ class InvertedIndex:
                 self.term_frequency[doc_id] = Counter()
             self.index[t].add(doc_id)
             self.term_frequency[doc_id][t] +=1
+        self.doc_lengths[doc_id] = len(tokens)
+    def __get_avg_doc_length(self) -> float:
+        if len(self.doc_lengths) == 0:
+            return 0.0
+        total_doc_length = sum(self.doc_lengths.values())
+        return total_doc_length/len(self.doc_lengths)
 
     def get_documents(self, term: str) -> list[int]:
         if term not in self.index:
@@ -35,6 +42,13 @@ class InvertedIndex:
         total_doc_count = len(self.docmap)
         matching_doc_count = len(self.get_documents(term))
         return math.log((total_doc_count -matching_doc_count +0.5)/(matching_doc_count + 0.5) +1)
+    def get_bm25_tf(self, doc_id: int, term: str, k1 = BM25_K1, b = BM25_B):
+        tf= self.get_tf(doc_id, term)
+        length_normalization = 1- b + b * ( (self.doc_lengths[doc_id])/ self.__get_avg_doc_length())
+        return (tf * (k1+1))/ (tf + k1 *length_normalization)
+
+    def bm25(self, doc_id: int, term: str) -> float:
+        return (self.get_bm25_tf(doc_id, term)) * (self.get_bm25_idf(term))
     def build(self):
         movies = load_movies()
         for movie in movies:
@@ -44,20 +58,47 @@ class InvertedIndex:
         index_file = open(INDEX_CACHE_PATH, "wb")
         docmap_file = open(INDEX_DOCMAP_CACHE_PATH, "wb")
         term_frequency_file = open(INDEX_TERMFREQUENCY_CACHE_PATH, "wb")
+        doc_lengths_file = open(INDEX_DOCLENGTH_CACHE_PATH, "wb")
         pickle.dump(self.index, index_file)
         pickle.dump(self.docmap, docmap_file)
         pickle.dump(self.term_frequency, term_frequency_file)
+        pickle.dump(self.doc_lengths, doc_lengths_file)
 
     def load(self):
         try:
             index_file = open(INDEX_CACHE_PATH, "rb")
             docmap_file = open(INDEX_DOCMAP_CACHE_PATH, "rb")
             term_frequency_file = open(INDEX_TERMFREQUENCY_CACHE_PATH, "rb")
+            doc_lengths_file = open(INDEX_DOCLENGTH_CACHE_PATH, "rb")
             self.index = pickle.load(index_file)
             self.docmap = pickle.load(docmap_file)
             self.term_frequency = pickle.load(term_frequency_file)
+            self.doc_lengths = pickle.load(doc_lengths_file)
         except(Exception):
             raise Exception("Trying to access inexistant file")
+
+    def bm25_search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[SearchResult]:
+        query_tokens = tokenize_text(query)
+        result = []
+        scores = {}
+        for t in query_tokens:
+            doc_ids = self.get_documents(t)
+            for doc_id in doc_ids:
+                if doc_id not in scores:
+                    scores[doc_id] = 0.0
+                scores[doc_id] += self.bm25(doc_id, t)
+        top_matches = sorted(scores.items(), key = lambda item: item[1], reverse= True)[:limit]
+        for match in top_matches:
+            search_result = SearchResult()
+            doc_id = match[0]
+            score = match[1]
+            search_result["id"] = doc_id
+            search_result["score"] = score
+            movie_doc= self.get_document_movie(doc_id)
+            search_result["title"] = movie_doc["title"]
+            search_result["document"] = f"{doc_id} - {movie_doc["description"]}"
+            result.append(search_result)
+        return result
         
 def build_command() -> InvertedIndex:
     index = InvertedIndex()
@@ -93,6 +134,21 @@ def bm25_idf_command(term: str):
     index.load()
     term= tokenize_single_term(term)
     return index.get_bm25_idf(term)
+
+def bm25_tf_command(doc_id: int, term: str, k1= BM25_K1, b = BM25_B):
+    index = InvertedIndex()
+    index.load()
+    term = tokenize_single_term(term)
+    return index.get_bm25_tf(doc_id, term, k1, b)
+
+def bm25search_command(query: str):
+    index = InvertedIndex()
+    index.load()
+    results = index.bm25_search(query)
+    rank = 1
+    for r in results:
+        print(f"{rank}. ({r['id']}) {r['title']} - Score: {r['score']:.2f}")
+        rank+=1
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[Movie]:
     results = []

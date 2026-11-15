@@ -31,7 +31,7 @@ DOCUMENT_PREVIEW_LENGTH = 100
 SCORE_PRECISION = 3
 
 BM25_K1 = 1.5
-BM35_B = 0.75
+BM25_B = 0.75
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "movies.json")
@@ -51,6 +51,7 @@ CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
 INDEX_CACHE_PATH = os.path.join(CACHE_DIR, "index.pkl")
 INDEX_DOCMAP_CACHE_PATH = os.path.join(CACHE_DIR, "docmap.pkl")
 INDEX_TERMFREQUENCY_CACHE_PATH = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+INDEX_DOCLENGTH_CACHE_PATH = os.path.join(CACHE_DIR, "doc_lengths.pkl")
 
 def load_movies() -> list[Movie]:
     with open(DATA_PATH, "r") as f:
